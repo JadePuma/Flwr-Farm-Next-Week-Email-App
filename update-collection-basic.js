@@ -14,10 +14,9 @@ const shop  = process.env.SHOPIFY_SHOP;
 const token = process.env.SHOPIFY_ADMIN_TOKEN;
 
 function isoWeekNumberUTC(date = new Date()) {
-  // ISO week based on UTC
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7;        // Sunday=7
-  d.setUTCDate(d.getUTCDate() + 4 - day); // shift to Thursday
+  const day = d.getUTCDay() || 7;          // Sunday=7
+  d.setUTCDate(d.getUTCDate() + 4 - day);  // shift to Thursday
 
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const diffDays = Math.floor((d - yearStart) / 86400000) + 1;
@@ -63,7 +62,15 @@ function esc(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatMoney(amountStr, currencyCode) {
+  const n = Number(amountStr);
+  if (!Number.isFinite(n)) return "";
+  // Simple, email-safe formatting. (If you want locale-aware, tell me the target locale.)
+  return `${currencyCode} ${n.toFixed(2)}`;
 }
 
 async function getCollectionNumericId(h) {
@@ -85,36 +92,85 @@ async function getProductsInCollection(numericId, first = 50) {
           title
           handle
           onlineStoreUrl
+          featuredImage {
+            url
+            altText
+          }
+          priceRangeV2 {
+            minVariantPrice { amount currencyCode }
+          }
         }
       }
     }
   }`;
+
   const d = await gql(Q, { first, query });
+
   return (d?.products?.edges || []).map(e => {
     const p = e.node;
+
+    const money = p?.priceRangeV2?.minVariantPrice;
+    const price = money ? formatMoney(money.amount, money.currencyCode) : "";
+
+    const imageUrl = p?.featuredImage?.url || "";
+    const imageAlt = p?.featuredImage?.altText || p?.title || "";
+
     return {
       title: p.title || "",
       url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
+      price,
+      imageUrl,
+      imageAlt,
     };
   });
 }
 
 function buildHtml(collectionTitle, products) {
-  const items = products
-    .map(
-      p =>
-        `<li style="margin:0 0 8px 0;"><a href="${p.url}" style="color:#111;text-decoration:none;">${esc(
-          p.title
-        )}</a></li>`
-    )
-    .join("\n");
+  const rows = products.map(p => {
+    const img = p.imageUrl
+      ? `<a href="${p.url}" style="text-decoration:none;">
+           <img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="56" height="56"
+                style="display:block;border-radius:10px;object-fit:cover;border:1px solid #eee;">
+         </a>`
+      : `<div style="width:56px;height:56px;border-radius:10px;background:#f3f3f3;border:1px solid #eee;"></div>`;
+
+    const price = p.price
+      ? `<div style="margin-top:4px;color:#666;font-size:12px;">${esc(p.price)}</div>`
+      : "";
+
+    return `
+      <tr>
+        <td style="padding:10px 0;border-top:1px solid #eee;vertical-align:top;width:68px;">
+          ${img}
+        </td>
+        <td style="padding:10px 0;border-top:1px solid #eee;vertical-align:top;">
+          <a href="${p.url}" style="color:#111;text-decoration:none;font-weight:600;">
+            ${esc(p.title)}
+          </a>
+          ${price}
+        </td>
+      </tr>
+    `.trim();
+  }).join("\n");
+
+  const empty = `
+    <tr>
+      <td style="padding:10px 0;color:#666;">No products found.</td>
+    </tr>
+  `.trim();
 
   return `
-<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;">
-  <p style="margin:0 0 10px 0;"><strong>${esc(collectionTitle)}</strong> (${products.length} products)</p>
-  <ul style="padding-left:18px;margin:0;">
-${items || "    <li>No products found.</li>"}
-  </ul>
+<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;">
+  <div style="border:1px solid #eee;border-radius:12px;padding:14px 16px;background:#fff;">
+    <div style="font-size:16px;font-weight:700;">${esc(collectionTitle)}</div>
+    <div style="color:#666;font-size:12px;margin-top:2px;">${products.length} product${products.length === 1 ? "" : "s"}</div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:10px;">
+      <tbody>
+        ${products.length ? rows : empty}
+      </tbody>
+    </table>
+  </div>
 </div>
 `.trim();
 }
