@@ -73,6 +73,10 @@ function formatMoney(amountStr, currencyCode) {
   return `${currencyCode} ${n.toFixed(2)}`;
 }
 
+function collectionUrlFromHandle(h) {
+  return `https://${shop}.myshopify.com/collections/${h}`;
+}
+
 async function getCollectionNumericId(h) {
   const Q = `query($handle:String!){
     collectionByHandle(handle:$handle){ id title }
@@ -117,6 +121,7 @@ async function getProductsInCollection(numericId, first = 50) {
 
     return {
       title: p.title || "",
+      // NOTE: we no longer use product URLs in the HTML, but keep this if you want later
       url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
       price,
       imageUrl,
@@ -125,13 +130,11 @@ async function getProductsInCollection(numericId, first = 50) {
   });
 }
 
-function buildHtml(collectionTitle, products) {
+function buildHtml(collectionTitle, products, collectionLink) {
   const rows = products.map(p => {
     const img = p.imageUrl
-      ? `<a href="${p.url}" style="text-decoration:none;">
-           <img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="56" height="56"
-                style="display:block;border-radius:10px;object-fit:cover;border:1px solid #eee;">
-         </a>`
+      ? `<img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="56" height="56"
+              style="display:block;border-radius:10px;object-fit:cover;border:1px solid #eee;">`
       : `<div style="width:56px;height:56px;border-radius:10px;background:#f3f3f3;border:1px solid #eee;"></div>`;
 
     const price = p.price
@@ -144,9 +147,9 @@ function buildHtml(collectionTitle, products) {
           ${img}
         </td>
         <td style="padding:10px 0;border-top:1px solid #eee;vertical-align:top;">
-          <a href="${p.url}" style="color:#111;text-decoration:none;font-weight:600;">
+          <div style="color:#111;font-weight:600;">
             ${esc(p.title)}
-          </a>
+          </div>
           ${price}
         </td>
       </tr>
@@ -159,19 +162,23 @@ function buildHtml(collectionTitle, products) {
     </tr>
   `.trim();
 
+  // IMPORTANT: wrap the WHOLE block in a single <a> so the entire container is one link.
+  // No nested <a> tags inside (email clients + HTML validity).
   return `
-<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;">
-  <div style="border:1px solid #eee;border-radius:12px;padding:14px 16px;background:#fff;">
-    <div style="font-size:16px;font-weight:700;">${esc(collectionTitle)}</div>
-    <div style="color:#666;font-size:12px;margin-top:2px;">${products.length} product${products.length === 1 ? "" : "s"}</div>
+<a href="${collectionLink}" style="text-decoration:none;color:inherit;display:block;">
+  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;">
+    <div style="border:1px solid #eee;border-radius:12px;padding:14px 16px;background:#fff;">
+      <div style="font-size:16px;font-weight:700;">${esc(collectionTitle)}</div>
+      <div style="color:#666;font-size:12px;margin-top:2px;">${products.length} product${products.length === 1 ? "" : "s"}</div>
 
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:10px;">
-      <tbody>
-        ${products.length ? rows : empty}
-      </tbody>
-    </table>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <tbody>
+          ${products.length ? rows : empty}
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
+</a>
 `.trim();
 }
 
@@ -209,11 +216,14 @@ async function writeShopMetafield(html) {
 
     const { title, numericId } = await getCollectionNumericId(handle);
     const products = await getProductsInCollection(numericId, 50);
-    const html = buildHtml(title, products);
+
+    const collectionLink = collectionUrlFromHandle(handle);
+    const html = buildHtml(title, products, collectionLink);
 
     await writeShopMetafield(html);
 
     console.log(`✅ Wrote ${products.length} products from "${title}" to shop metafield email.collection_html_1`);
+    console.log(`🔗 Collection link used: ${collectionLink}`);
   } catch (e) {
     console.error("❌", e.stack || e.message || e);
     process.exit(1);
