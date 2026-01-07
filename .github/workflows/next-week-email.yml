@@ -16,4 +16,4 @@ jobs:
         env:
           SHOPIFY_SHOP: ${{ secrets.SHOPIFY_SHOP }}
           SHOPIFY_ADMIN_TOKEN: ${{ secrets.SHOPIFY_ADMIN_TOKEN }}
-        run: node update-collection-basic.js week-4-plants
+        run: node update-collection-basic.js 

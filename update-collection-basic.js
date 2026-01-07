@@ -1,17 +1,41 @@
 // update-collection-basic.js
 // Usage (GitHub Actions):
-//   node update-collection-basic.js <collection-handle>
+//   node update-collection-basic.js [collection-handle]
+//
+// If no handle is provided, it will:
+//   - compute the NEXT ISO week number (UTC, based on "today + 7 days")
+//   - build handle: week-<N>-plants  (e.g. week-4-plants)
 //
 // Env vars required:
 //   SHOPIFY_SHOP (subdomain, e.g. "flwr-farm")
 //   SHOPIFY_ADMIN_TOKEN (shpca_... or shpat_...)
 
-const shop   = process.env.SHOPIFY_SHOP;
-const token  = process.env.SHOPIFY_ADMIN_TOKEN;
-const handle = process.argv[2];
+const shop  = process.env.SHOPIFY_SHOP;
+const token = process.env.SHOPIFY_ADMIN_TOKEN;
 
-if (!shop || !token || !handle) {
-  console.error("Usage: SHOPIFY_SHOP=... SHOPIFY_ADMIN_TOKEN=... node update-collection-basic.js <collection-handle>");
+function isoWeekNumberUTC(date = new Date()) {
+  // ISO week based on UTC
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;        // Sunday=7
+  d.setUTCDate(d.getUTCDate() + 4 - day); // shift to Thursday
+
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const diffDays = Math.floor((d - yearStart) / 86400000) + 1;
+  return Math.ceil(diffDays / 7);
+}
+
+function nextWeekHandleUTC(suffix = "plants") {
+  const now = new Date();
+  const nextWeekDate = new Date(now.getTime() + 7 * 86400000); // +7 days
+  const nextWeek = isoWeekNumberUTC(nextWeekDate);
+  return `week-${nextWeek}-${suffix}`;
+}
+
+// Optional override: node update-collection-basic.js week-4-plants
+const handle = process.argv[2] || nextWeekHandleUTC("plants");
+
+if (!shop || !token) {
+  console.error("Usage: SHOPIFY_SHOP=... SHOPIFY_ADMIN_TOKEN=... node update-collection-basic.js [collection-handle]");
   process.exit(1);
 }
 
@@ -70,15 +94,20 @@ async function getProductsInCollection(numericId, first = 50) {
     const p = e.node;
     return {
       title: p.title || "",
-      url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`
+      url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
     };
   });
 }
 
 function buildHtml(collectionTitle, products) {
-  const items = products.map(p =>
-    `<li style="margin:0 0 8px 0;"><a href="${p.url}" style="color:#111;text-decoration:none;">${esc(p.title)}</a></li>`
-  ).join("\n");
+  const items = products
+    .map(
+      p =>
+        `<li style="margin:0 0 8px 0;"><a href="${p.url}" style="color:#111;text-decoration:none;">${esc(
+          p.title
+        )}</a></li>`
+    )
+    .join("\n");
 
   return `
 <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;">
@@ -102,13 +131,15 @@ async function writeShopMetafield(html) {
   }`;
 
   const variables = {
-    metafields: [{
-      ownerId: shopId,
-      namespace: "email",
-      key: "collection_html_1",
-      type: "multi_line_text_field",
-      value: html
-    }]
+    metafields: [
+      {
+        ownerId: shopId,
+        namespace: "email",
+        key: "collection_html_1",
+        type: "multi_line_text_field",
+        value: html,
+      },
+    ],
   };
 
   const d = await gql(M, variables);
@@ -118,6 +149,8 @@ async function writeShopMetafield(html) {
 
 (async () => {
   try {
+    console.log(`ℹ️ Using collection handle: ${handle}`);
+
     const { title, numericId } = await getCollectionNumericId(handle);
     const products = await getProductsInCollection(numericId, 50);
     const html = buildHtml(title, products);
