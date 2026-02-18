@@ -151,7 +151,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
 
   const rows = products.map((p, index) => {
 
-    const bgColor = index % 2 === 0 ? "#f4ebe6" : "#ffffff";
+    const bgColor = index % 2 === 0 ? "#f4ebe6" : "#fafafa";
 
     const img = p.imageUrl
       ? `<img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="72" height="72"
