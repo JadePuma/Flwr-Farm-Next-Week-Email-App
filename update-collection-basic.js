@@ -106,7 +106,6 @@ async function getProductsInCollection(numericId, first = 50) {
           title
           handle
           onlineStoreUrl
-          availableForSale
           featuredImage {
             url
             altText
@@ -123,8 +122,8 @@ async function getProductsInCollection(numericId, first = 50) {
 
   return (d?.products?.edges || [])
     .map(e => e.node)
-    // ✅ ensure product is "available" (availableForSale) and has an Online Store URL (published)
-    .filter(p => p.availableForSale && !!p.onlineStoreUrl)
+    // ✅ "available on site" = published to Online Store
+    .filter(p => !!p.onlineStoreUrl)
     .map(p => {
       const money = p?.priceRangeV2?.minVariantPrice;
       const price = money ? formatMoney(money.amount, money.currencyCode) : "";
@@ -141,6 +140,7 @@ async function getProductsInCollection(numericId, first = 50) {
       };
     });
 }
+
 
 function buildHtml(collectionTitle, products, collectionLink) {
 
