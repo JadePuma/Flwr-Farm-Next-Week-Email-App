@@ -106,12 +106,15 @@ async function getProductsInCollection(numericId, first = 50) {
           title
           handle
           onlineStoreUrl
-          featuredImage {
-            url
-            altText
-          }
-          priceRangeV2 {
-            minVariantPrice { amount currencyCode }
+          featuredImage { url altText }
+          priceRangeV2 { minVariantPrice { amount currencyCode } }
+
+          variants(first: 1) {
+            edges {
+              node {
+                availableForSale
+              }
+            }
           }
         }
       }
@@ -122,24 +125,26 @@ async function getProductsInCollection(numericId, first = 50) {
 
   return (d?.products?.edges || [])
     .map(e => e.node)
-    // ✅ "available on site" = published to Online Store
+    // Must be published
     .filter(p => !!p.onlineStoreUrl)
+    // Must have at least one variant available (like product.available in Liquid)
+    .filter(p =>
+      p.variants?.edges?.some(v => v.node.availableForSale)
+    )
     .map(p => {
       const money = p?.priceRangeV2?.minVariantPrice;
       const price = money ? formatMoney(money.amount, money.currencyCode) : "";
-
-      const imageUrl = p?.featuredImage?.url || "";
-      const imageAlt = p?.featuredImage?.altText || p?.title || "";
 
       return {
         title: p.title || "",
         url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
         price,
-        imageUrl,
-        imageAlt,
+        imageUrl: p?.featuredImage?.url || "",
+        imageAlt: p?.featuredImage?.altText || p?.title || "",
       };
     });
 }
+
 
 
 function buildHtml(collectionTitle, products, collectionLink) {
