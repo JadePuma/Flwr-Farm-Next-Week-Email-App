@@ -69,8 +69,18 @@ function esc(s) {
 function formatMoney(amountStr, currencyCode) {
   const n = Number(amountStr);
   if (!Number.isFinite(n)) return "";
-  // Simple, email-safe formatting. (If you want locale-aware, tell me the target locale.)
-  return `${currencyCode} ${n.toFixed(2)}`;
+
+  const symbols = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    HUF: "Ft",
+    CAD: "$",
+    AUD: "$",
+  };
+
+  const symbol = symbols[currencyCode] || currencyCode;
+  return `${symbol}${n.toFixed(2)}`;
 }
 
 function collectionUrlFromHandle(h) {
@@ -131,22 +141,26 @@ async function getProductsInCollection(numericId, first = 50) {
 }
 
 function buildHtml(collectionTitle, products, collectionLink) {
-  const rows = products.map(p => {
+
+  const rows = products.map((p, index) => {
+
+    const bgColor = index % 2 === 0 ? "#f4ebe6" : "#d6b5a2";
+
     const img = p.imageUrl
-      ? `<img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="56" height="56"
-              style="display:block;border-radius:10px;object-fit:cover;border:1px solid #eee;">`
-      : `<div style="width:56px;height:56px;border-radius:10px;background:#f3f3f3;border:1px solid #eee;"></div>`;
+      ? `<img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="72" height="72"
+              style="display:block;object-fit:cover;border:none;">`
+      : `<div style="width:72px;height:72px;background:#eee;"></div>`;
 
     const price = p.price
-      ? `<div style="margin-top:4px;color:#666;font-size:12px;">${esc(p.price)}</div>`
+      ? `<div style="margin-top:4px;color:#333;font-size:13px;">${esc(p.price)}</div>`
       : "";
 
     return `
-      <tr>
-        <td style="padding:10px 0;border-top:1px solid #eee;vertical-align:top;width:68px;">
+      <tr style="background:${bgColor};">
+        <td style="padding:12px 10px;vertical-align:top;width:84px;">
           ${img}
         </td>
-        <td style="padding:10px 0;border-top:1px solid #eee;vertical-align:top;">
+        <td style="padding:12px 10px;vertical-align:top;">
           <div style="color:#111;font-weight:600;">
             ${esc(p.title)}
           </div>
@@ -154,24 +168,26 @@ function buildHtml(collectionTitle, products, collectionLink) {
         </td>
       </tr>
     `.trim();
+
   }).join("\n");
 
   const empty = `
     <tr>
-      <td style="padding:10px 0;color:#666;">No products found.</td>
+      <td style="padding:12px;color:#666;">No products found.</td>
     </tr>
   `.trim();
 
-  // IMPORTANT: wrap the WHOLE block in a single <a> so the entire container is one link.
-  // No nested <a> tags inside (email clients + HTML validity).
   return `
 <a href="${collectionLink}" style="text-decoration:none;color:inherit;display:block;">
   <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;">
-    <div style="border:1px solid #eee;border-radius:12px;padding:14px 16px;background:#fff;">
-      <div style="font-size:16px;font-weight:700;">${esc(collectionTitle)}</div>
-      <div style="color:#666;font-size:12px;margin-top:2px;">${products.length} product${products.length === 1 ? "" : "s"}</div>
+    <div style="border:1px solid #eee;border-radius:12px;padding:16px;background:#fff;">
+      <div style="font-size:17px;font-weight:700;">${esc(collectionTitle)}</div>
+      <div style="color:#666;font-size:12px;margin-top:4px;">
+        ${products.length} product${products.length === 1 ? "" : "s"}
+      </div>
 
-      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:10px;">
+      <table role="presentation" cellpadding="0" cellspacing="0"
+             style="width:100%;border-collapse:collapse;margin-top:12px;">
         <tbody>
           ${products.length ? rows : empty}
         </tbody>
@@ -181,6 +197,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
 </a>
 `.trim();
 }
+
 
 async function writeShopMetafield(html) {
   const shopQ = `query{ shop{ id } }`;
