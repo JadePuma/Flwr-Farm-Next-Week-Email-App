@@ -159,7 +159,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
       : `<div style="width:72px;height:72px;background:#eee;"></div>`;
 
     const price = p.price
-      ? `<div style="margin-top:4px;color:#222829;font-size:13px;">${esc(p.price)}</div>`
+      ? `<div style="margin-top:4px;color:#5e5e50;font-size:13px;">${esc(p.price)}</div>`
       : "";
 
     return `
@@ -168,7 +168,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
           ${img}
         </td>
         <td style="padding:12px 10px;vertical-align:top;">
-          <div style="color:#222829;font-weight:600;">
+          <div style="color:#5e5e50;font-weight:600;">
             ${esc(p.title)}
           </div>
           ${price}
@@ -187,8 +187,8 @@ function buildHtml(collectionTitle, products, collectionLink) {
   // ✅ Remove any outer spacing: no wrapper padding/margins, and table has margin:0
   return `
 <a href="${collectionLink}" 
-   style="text-decoration:none;color:#222829;display:block;margin:0;padding:0;">
-  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#222829;margin:0;padding:0;">
+   style="text-decoration:none;color:#5e5e50;display:block;margin:0;padding:0;">
+  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#5e5e50;margin:0;padding:0;">
 
       <!-- PRODUCT COUNT GOES RIGHT HERE -->
       <div style="color:#222829;font-size:12px;margin-bottom:8px;">
