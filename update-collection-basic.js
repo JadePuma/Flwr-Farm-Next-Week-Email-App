@@ -144,7 +144,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
 
   const rows = products.map((p, index) => {
 
-    const bgColor = index % 2 === 0 ? "#f4ebe6" : "#ffffff";
+    const bgColor = index % 2 === 0 ? "#f4ebe6" : "#d6b5a2";
 
     const img = p.imageUrl
       ? `<img src="${p.imageUrl}" alt="${esc(p.imageAlt)}" width="72" height="72"
@@ -152,7 +152,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
       : `<div style="width:72px;height:72px;background:#eee;"></div>`;
 
     const price = p.price
-      ? `<div style="margin-top:4px;color:#333;font-size:13px;">${esc(p.price)}</div>`
+      ? `<div style="margin-top:4px;color:#222829;font-size:13px;">${esc(p.price)}</div>`
       : "";
 
     return `
@@ -161,7 +161,7 @@ function buildHtml(collectionTitle, products, collectionLink) {
           ${img}
         </td>
         <td style="padding:12px 10px;vertical-align:top;">
-          <div style="color:#111;font-weight:600;">
+          <div style="color:#222829;font-weight:600;">
             ${esc(p.title)}
           </div>
           ${price}
@@ -173,30 +173,27 @@ function buildHtml(collectionTitle, products, collectionLink) {
 
   const empty = `
     <tr>
-      <td style="padding:12px;color:#666;">No products found.</td>
+      <td style="padding:12px;color:#222829;">No products found.</td>
     </tr>
   `.trim();
 
   return `
-<a href="${collectionLink}" style="text-decoration:none;color:inherit;display:block;">
-  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;">
-    <div style="border:1px solid #eee;border-radius:12px;padding:16px;background:#fff;">
-      <div style="font-size:17px;font-weight:700;">${esc(collectionTitle)}</div>
-      <div style="color:#666;font-size:12px;margin-top:4px;">
-        ${products.length} product${products.length === 1 ? "" : "s"}
-      </div>
-
+<a href="${collectionLink}" style="text-decoration:none;color:#222829;display:block;">
+  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#222829;">
+      
       <table role="presentation" cellpadding="0" cellspacing="0"
-             style="width:100%;border-collapse:collapse;margin-top:12px;">
+             style="width:100%;border-collapse:collapse;">
         <tbody>
           ${products.length ? rows : empty}
         </tbody>
       </table>
-    </div>
+
   </div>
 </a>
 `.trim();
 }
+
+
 
 
 async function writeShopMetafield(html) {
