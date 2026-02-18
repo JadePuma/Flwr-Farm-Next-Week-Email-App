@@ -105,11 +105,14 @@ async function getProductsInCollection(numericId, first = 50) {
         node{
           title
           handle
-          status
-          publishedOnCurrentPublication
           onlineStoreUrl
-          featuredImage { url altText }
-          priceRangeV2 { minVariantPrice { amount currencyCode } }
+          featuredImage {
+            url
+            altText
+          }
+          priceRangeV2 {
+            minVariantPrice { amount currencyCode }
+          }
         }
       }
     }
@@ -117,32 +120,30 @@ async function getProductsInCollection(numericId, first = 50) {
 
   const d = await gql(Q, { first, query });
 
-  return (d?.products?.edges || [])
-    .map(e => e.node)
-    // ✅ Only show products that are actually available on the online store
-    .filter(p => p.publishedOnCurrentPublication && p.status === "ACTIVE")
-    .map(p => {
-      const money = p?.priceRangeV2?.minVariantPrice;
-      const price = money ? formatMoney(money.amount, money.currencyCode) : "";
+  return (d?.products?.edges || []).map(e => {
+    const p = e.node;
 
-      const imageUrl = p?.featuredImage?.url || "";
-      const imageAlt = p?.featuredImage?.altText || p?.title || "";
+    const money = p?.priceRangeV2?.minVariantPrice;
+    const price = money ? formatMoney(money.amount, money.currencyCode) : "";
 
-      return {
-        title: p.title || "",
-        url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
-        price,
-        imageUrl,
-        imageAlt,
-      };
-    });
+    const imageUrl = p?.featuredImage?.url || "";
+    const imageAlt = p?.featuredImage?.altText || p?.title || "";
+
+    return {
+      title: p.title || "",
+      // NOTE: we no longer use product URLs in the HTML, but keep this if you want later
+      url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
+      price,
+      imageUrl,
+      imageAlt,
+    };
+  });
 }
 
 function buildHtml(collectionTitle, products, collectionLink) {
 
   const rows = products.map((p, index) => {
 
-    // Alternating: beige + white (as requested)
     const bgColor = index % 2 === 0 ? "#f4ebe6" : "#ffffff";
 
     const img = p.imageUrl
@@ -179,23 +180,21 @@ function buildHtml(collectionTitle, products, collectionLink) {
   return `
 <a href="${collectionLink}" style="text-decoration:none;color:#222829;display:block;">
   <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#222829;">
-
-    <!-- Product count (restored, same style as before) -->
-    <div style="color:#222829;font-size:12px;margin-top:2px;">
-      ${products.length} product${products.length === 1 ? "" : "s"}
-    </div>
-
-    <table role="presentation" cellpadding="0" cellspacing="0"
-           style="width:100%;border-collapse:collapse;margin-top:10px;">
-      <tbody>
-        ${products.length ? rows : empty}
-      </tbody>
-    </table>
+      
+      <table role="presentation" cellpadding="0" cellspacing="0"
+             style="width:100%;border-collapse:collapse;">
+        <tbody>
+          ${products.length ? rows : empty}
+        </tbody>
+      </table>
 
   </div>
 </a>
 `.trim();
 }
+
+
+
 
 async function writeShopMetafield(html) {
   const shopQ = `query{ shop{ id } }`;
