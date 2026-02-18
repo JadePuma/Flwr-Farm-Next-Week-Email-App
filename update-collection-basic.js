@@ -106,6 +106,7 @@ async function getProductsInCollection(numericId, first = 50) {
           title
           handle
           onlineStoreUrl
+          availableForSale
           featuredImage {
             url
             altText
@@ -120,24 +121,25 @@ async function getProductsInCollection(numericId, first = 50) {
 
   const d = await gql(Q, { first, query });
 
-  return (d?.products?.edges || []).map(e => {
-    const p = e.node;
+  return (d?.products?.edges || [])
+    .map(e => e.node)
+    // ✅ ensure product is "available" (availableForSale) and has an Online Store URL (published)
+    .filter(p => p.availableForSale && !!p.onlineStoreUrl)
+    .map(p => {
+      const money = p?.priceRangeV2?.minVariantPrice;
+      const price = money ? formatMoney(money.amount, money.currencyCode) : "";
 
-    const money = p?.priceRangeV2?.minVariantPrice;
-    const price = money ? formatMoney(money.amount, money.currencyCode) : "";
+      const imageUrl = p?.featuredImage?.url || "";
+      const imageAlt = p?.featuredImage?.altText || p?.title || "";
 
-    const imageUrl = p?.featuredImage?.url || "";
-    const imageAlt = p?.featuredImage?.altText || p?.title || "";
-
-    return {
-      title: p.title || "",
-      // NOTE: we no longer use product URLs in the HTML, but keep this if you want later
-      url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
-      price,
-      imageUrl,
-      imageAlt,
-    };
-  });
+      return {
+        title: p.title || "",
+        url: p.onlineStoreUrl || `https://${shop}.myshopify.com/products/${p.handle}`,
+        price,
+        imageUrl,
+        imageAlt,
+      };
+    });
 }
 
 function buildHtml(collectionTitle, products, collectionLink) {
@@ -177,24 +179,20 @@ function buildHtml(collectionTitle, products, collectionLink) {
     </tr>
   `.trim();
 
+  // ✅ Remove any outer spacing: no wrapper padding/margins, and table has margin:0
   return `
-<a href="${collectionLink}" style="text-decoration:none;color:#222829;display:block;">
-  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#222829;">
-      
+<a href="${collectionLink}" style="text-decoration:none;color:#222829;display:block;margin:0;padding:0;">
+  <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.4;color:#222829;margin:0;padding:0;">
       <table role="presentation" cellpadding="0" cellspacing="0"
-             style="width:100%;border-collapse:collapse;">
+             style="width:100%;border-collapse:collapse;margin:0;padding:0;">
         <tbody>
           ${products.length ? rows : empty}
         </tbody>
       </table>
-
   </div>
 </a>
 `.trim();
 }
-
-
-
 
 async function writeShopMetafield(html) {
   const shopQ = `query{ shop{ id } }`;
